@@ -1,0 +1,31 @@
+{
+  "users": {
+    "6497860077": {
+      "balance": 0,
+      "name": "Insider"
+    },
+    "6501532900": {
+      "balance": 0,
+      "name": "Eddy"
+    }
+  },
+  "orders": {},
+  "deposits": {
+    "D1767718645859": {
+      "userId": 6497860077,
+      "status": "pending"
+    },
+    "D1767719228119": {
+      "userId": 6497860077,
+      "status": "pending"
+    },
+    "D1767719874686": {
+      "userId": 6497860077,
+      "status": "pending"
+    },
+    "D1767719879783": {
+      "userId": 6497860077,
+      "status": "pending"
+    }
+  }
+}
