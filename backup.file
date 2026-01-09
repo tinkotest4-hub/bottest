@@ -1,0 +1,297 @@
+// ------------------- CALLBACK HANDLER -------------------
+bot.on('callback_query', (q) => {
+  const id = q.message.chat.id;
+  const data = q.data;
+
+  bot.answerCallbackQuery(q.id);
+
+  if (!sessions[id]) sessions[id] = {};
+
+  // Back to main menu
+  if (data === 'back_to_menu') return startMenu(id);
+
+  // ----------------- DEPOSIT FLOW -----------------
+  if (data === 'goto_deposit') {
+    const buttons = [
+      [{ text: "$50", callback_data: "amt_50" }, { text: "$100", callback_data: "amt_100" }],
+      [{ text: "🏠 Main Menu", callback_data: "back_to_menu" }]
+    ];
+    return bot.sendMessage(id, "💳 Select Amount:", {
+      reply_markup: { inline_keyboard: buttons }
+    });
+  }
+
+  if (data.startsWith('amt_')) {
+    const amt = parseFloat(data.split('_')[1]);
+    sessions[id].depositAmount = amt;
+
+    const btns = Object.keys(CRYPTO).map(c => [
+      { text: c, callback_data: `pay_${c}` }
+    ]);
+    btns.push([{ text: "🏠 Main Menu", callback_data: "back_to_menu" }]);
+
+    return bot.sendMessage(id, `💳 Amount: $${amt}\nSelect Crypto:`, {
+      reply_markup: { inline_keyboard: btns }
+    });
+  }
+
+  if (data.startsWith('pay_')) {
+    const coin = data.split('_')[1];
+    const depId = "D" + Date.now();
+
+    db.deposits[depId] = {
+      userId: id,
+      amount: sessions[id].depositAmount,
+      crypto: coin,
+      status: 'pending'
+    };
+    saveDB();
+
+    // User message
+    bot.sendMessage(
+      id,
+      `⚠️ *PAYMENT REQUIRED*\nAmount: $${sessions[id].depositAmount}\nCoin: ${coin}\nAddress: \`${CRYPTO[coin]}\`\nAfter payment click below.`,
+      {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "✅ I Have Paid", callback_data: `paid_${depId}` }],
+            [{ text: "🏠 Main Menu", callback_data: "back_to_menu" }]
+          ]
+        }
+      }
+    );
+
+    // Admin notification
+    bot.sendMessage(
+      ADMIN_ID,
+      `🚨 *Deposit Submitted*\nUser: ${id}\nAmount: $${sessions[id].depositAmount}\nCoin: ${coin}`,
+      {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "✅ Approve", callback_data: `appr_${depId}` }],
+            [{ text: "❌ Reject", callback_data: `rej_${depId}` }]
+          ]
+        }
+      }
+    );
+
+    return;
+  }
+
+  // User confirms payment
+  if (data.startsWith('paid_')) {
+    const depId = data.split('_')[1];
+    const dep = db.deposits[depId];
+    if (!dep) return;
+
+    dep.status = 'waiting_approval';
+    saveDB();
+
+    return bot.sendMessage(id, "✅ Payment marked as sent. Waiting for admin approval.");
+  }
+
+  // Admin approves
+  if (data.startsWith('appr_') && id === ADMIN_ID) {
+    const depId = data.split('_')[1];
+    const dep = db.deposits[depId];
+    if (!dep || dep.status !== 'waiting_approval') return;
+
+    db.users[dep.userId].balance += dep.amount;
+    dep.status = 'approved';
+    saveDB();
+
+    bot.sendMessage(
+      dep.userId,
+      `✅ Deposit Approved! Balance: $${db.users[dep.userId].balance.toFixed(2)}`
+    );
+
+    return bot.editMessageText("✅ Approved", {
+      chat_id: id,
+      message_id: q.message.message_id
+    });
+  }
+
+  // Admin rejects
+  if (data.startsWith('rej_') && id === ADMIN_ID) {
+    const depId = data.split('_')[1];
+    const dep = db.deposits[depId];
+    if (!dep || dep.status !== 'waiting_approval') return;
+
+    dep.status = 'rejected';
+    saveDB();
+
+    bot.sendMessage(dep.userId, "❌ Deposit Rejected");
+
+    return bot.editMessageText("❌ Rejected", {
+      chat_id: id,
+      message_id: q.message.message_id
+    });
+  }
+
+  // ----------------- SERVICES FLOW -----------------
+  if (data === 'goto_services') {
+    const btns = Object.keys(SERVICES).map(p => [{ text: p, callback_data: `plat_${p}` }]);
+    btns.push([{ text: "🏠 Main Menu", callback_data: "back_to_menu" }]);
+    return bot.sendMessage(id, "📣 Select Platform:", { reply_markup: { inline_keyboard: btns } });
+  }
+
+  if (data.startsWith('plat_')) {
+    const plat = data.split('_')[1];
+    sessions[id].platform = plat;
+    const categories = Object.keys(SERVICES[plat]);
+    if (!categories.length) return bot.sendMessage(id, "❌ No categories yet.");
+    const btns = categories.map(c => [{ text: c, callback_data: `cat_${c}` }]);
+    btns.push([{ text: "🏠 Main Menu", callback_data: "back_to_menu" }]);
+    return bot.sendMessage(id, "📂 Select Category:", { reply_markup: { inline_keyboard: btns } });
+  }
+
+  if (data.startsWith('cat_')) {
+    const cat = data.split('_')[1];
+    const plat = sessions[id].platform;
+    sessions[id].category = cat;
+    const list = SERVICES[plat][cat] || [];
+    if (!list.length) return bot.sendMessage(id, "❌ No services yet.");
+    const btns = list.map(s => [{ text: `${s.name} ($${s.price})`, callback_data: `svc_${s.id}` }]);
+    btns.push([{ text: "🏠 Main Menu", callback_data: "back_to_menu" }]);
+    return bot.sendMessage(id, "🛠 Select Service:", { reply_markup: { inline_keyboard: btns } });
+  }
+
+  if (data.startsWith('svc_')) {
+    const sid = data.split('_')[1];
+    let svc;
+
+    // Search for service in all platforms/categories
+    for (const plat in SERVICES) {
+      for (const cat in SERVICES[plat]) {
+        const found = SERVICES[plat][cat].find(s => s.id === sid);
+        if (found) {
+          svc = found;
+          break;
+        }
+      }
+      if (svc) break;
+    }
+
+    if (!svc) return bot.sendMessage(id, "❌ Service not found.");
+
+    // Save service to session
+    sessions[id].svc = svc;
+    sessions[id].step = 'GET_QTY';
+
+    // Send message with proper line breaks using HTML parse mode
+    const msgText =
+`⭐ <b>${svc.name}</b>
+
+Description:
+${svc.desc}
+
+Price per 100 units: $${svc.price}
+
+Minimum order: ${svc.min}
+
+━━━━━━━━━━━━━━━
+Select quantity below ⬇️`;
+
+    return bot.sendMessage(id, msgText, {
+      parse_mode: 'HTML',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "🏠 Main Menu", callback_data: "back_to_menu" }]
+        ]
+      }
+    });
+  }
+
+  if (data === 'buy_now') {
+    const s = sessions[id];
+    if (!s || !s.svc || !s.qty || !s.link) return bot.sendMessage(id, "❌ Session expired");
+    const total = (s.qty / 100) * s.svc.price;
+    if (db.users[id].balance < total) return bot.sendMessage(id, "❌ Low balance");
+
+    db.users[id].balance -= total;
+    const oid = "O" + Date.now();
+    db.orders[oid] = { userId: id, svc: s.svc.name, qty: s.qty, link: s.link, total, status: "Pending" };
+    saveDB();
+    delete sessions[id];
+
+    bot.sendMessage(id, `✅ Order placed! Balance: $${db.users[id].balance.toFixed(2)}`);
+
+    // Notify admin
+    bot.sendMessage(ADMIN_ID, `📦 New Order\nUser: ${id}\nService: ${s.svc.name}\nQty: ${s.qty}\nLink: ${s.link}`, {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "⚙️ Processing", callback_data: `st_proc_${oid}` }],
+          [{ text: "✅ Complete", callback_data: `st_comp_${oid}` }],
+          [{ text: "❌ Reject", callback_data: `st_rej_${oid}` }]
+        ]
+      }
+    });
+  }
+
+  // ----------------- USER ORDERS -----------------
+  if (data === 'goto_orders') {
+    const myOrders = Object.values(db.orders).filter(o => o.userId === id);
+    if (!myOrders.length) return bot.sendMessage(id, "📦 No orders yet.");
+    const txt = myOrders.map(o => `📦 ${o.svc} | Qty: ${o.qty} | Status: ${o.status}`).join("\n");
+    return bot.sendMessage(id, txt);
+  }
+
+  // ----------------- ADMIN DASHBOARD -----------------
+  if (data === 'admin_dashboard' && id === ADMIN_ID) {
+    const btns = [
+      [{ text: "👥 Users", callback_data: "admin_users" }],
+      [{ text: "📦 Orders", callback_data: "admin_orders" }],
+      [{ text: "💳 Deposits", callback_data: "admin_deposits" }],
+      [{ text: "🏠 Main Menu", callback_data: "back_to_menu" }]
+    ];
+    return bot.sendMessage(id, "👑 Admin Dashboard", { reply_markup: { inline_keyboard: btns } });
+  }
+
+  if (data === 'admin_users' && id === ADMIN_ID) {
+    let txt = "👥 Users:\n";
+    for (const uid in db.users) txt += `${uid}: $${db.users[uid].balance.toFixed(2)}\n`;
+    return bot.sendMessage(id, txt, { reply_markup: { inline_keyboard: [[{ text: "🏠 Main Menu", callback_data: "back_to_menu" }]] } });
+  }
+
+  if (data === 'admin_deposits' && id === ADMIN_ID) {
+    let txt = "💳 Deposits:\n";
+    for (const dId in db.deposits) {
+      const dep = db.deposits[dId];
+      txt += `${dId}: User ${dep.userId} | $${dep.amount} | ${dep.crypto} | ${dep.status}\n`;
+    }
+    return bot.sendMessage(id, txt, { reply_markup: { inline_keyboard: [[{ text: "🏠 Main Menu", callback_data: "back_to_menu" }]] } });
+  }
+
+  // ----------------- SUPPORT -----------------
+  if (data === 'goto_support') {
+    sessions[id].step = 'SUPPORT';
+    return bot.sendMessage(id, "💬 Send your message for support:");
+  }
+
+  if (data.startsWith('arep_') && id === ADMIN_ID) {
+    const uid = data.split('_')[1];
+    sessions[id].step = 'REPLYING';
+    sessions[id].target = uid;
+    return bot.sendMessage(id, "💬 Reply to user:");
+  }
+
+  // ----------------- ORDER STATUS UPDATE -----------------
+  if (data.startsWith('st_') && id === ADMIN_ID) {
+    const [,, status, oid] = data.split('_');
+    const order = db.orders[oid];
+    if (!order) return;
+    if (status === 'proc') order.status = 'Processing';
+    else if (status === 'comp') order.status = 'Completed';
+    else if (status === 'rej') order.status = 'Rejected';
+
+    saveDB();
+    bot.sendMessage(order.userId, `📦 Your order ${order.svc} is now *${order.status}*`, { parse_mode: 'Markdown' });
+    bot.editMessageText(`✅ Updated: ${order.status}`, { chat_id: id, message_id: q.message.message_id });
+  }
+});
+
+
+
+------------------------------------------------------

@@ -1,15 +1,68 @@
 {
   "users": {
     "6497860077": {
-      "balance": 0,
+      "balance": 72.5,
       "name": "Insider"
     },
     "6501532900": {
-      "balance": 0,
+      "balance": 40,
       "name": "Eddy"
+    },
+    "5419419142": {
+      "balance": 0,
+      "name": "Payout Management"
+    },
+    "5324098553": {
+      "balance": 50,
+      "name": "YAYA"
+    },
+    "7772533119": {
+      "balance": 47,
+      "name": "Technical"
     }
   },
-  "orders": {},
+  "orders": {
+    "O1767784407650": {
+      "userId": 5324098553,
+      "svc": "Premium Members",
+      "qty": 100,
+      "link": "100",
+      "total": 50,
+      "status": "Pending"
+    },
+    "O1767785138905": {
+      "userId": 6497860077,
+      "svc": "Premium Members",
+      "qty": 150,
+      "link": "Eddyman",
+      "total": 75,
+      "status": "Completed"
+    },
+    "O1767785732848": {
+      "userId": 6501532900,
+      "svc": "Premium Members",
+      "qty": 120,
+      "link": "Sandy",
+      "total": 60,
+      "status": "Pending"
+    },
+    "O1767960128199": {
+      "userId": 6497860077,
+      "svc": "Premium Members",
+      "qty": 105,
+      "link": "Franks",
+      "total": 52.5,
+      "status": "Processing"
+    },
+    "O1767978206155": {
+      "userId": 7772533119,
+      "svc": "Channel Boost",
+      "qty": 200,
+      "link": "Dank",
+      "total": 130,
+      "status": "Rejected"
+    }
+  },
   "deposits": {
     "D1767718645859": {
       "userId": 6497860077,
@@ -26,6 +79,108 @@
     "D1767719879783": {
       "userId": 6497860077,
       "status": "pending"
+    },
+    "D1767727285786": {
+      "userId": 5419419142,
+      "status": "pending"
+    },
+    "D1767727354053": {
+      "userId": 5419419142,
+      "status": "pending"
+    },
+    "D1767780643338": {
+      "userId": 5419419142,
+      "amount": 100,
+      "crypto": "BTC",
+      "status": "pending"
+    },
+    "D1767780690890": {
+      "userId": 5419419142,
+      "amount": 100,
+      "crypto": "USDT",
+      "status": "pending"
+    },
+    "D1767780726162": {
+      "userId": 5419419142,
+      "amount": 100,
+      "crypto": "BTC",
+      "status": "pending"
+    },
+    "D1767780771612": {
+      "userId": 5419419142,
+      "amount": 100,
+      "crypto": "BNB",
+      "status": "pending"
+    },
+    "D1767780925856": {
+      "userId": 5419419142,
+      "amount": 100,
+      "crypto": "BTC",
+      "status": "pending"
+    },
+    "D1767781207805": {
+      "userId": 5324098553,
+      "amount": 100,
+      "crypto": "BTC",
+      "status": "pending"
+    },
+    "D1767783709261": {
+      "userId": 5324098553,
+      "amount": 100,
+      "crypto": "BTC",
+      "status": "pending"
+    },
+    "D1767784009577": {
+      "userId": 5324098553,
+      "crypto": "BTC",
+      "status": "pending"
+    },
+    "D1767784022584": {
+      "userId": 5324098553,
+      "crypto": "USDT",
+      "status": "pending"
+    },
+    "D1767784277355": {
+      "userId": 5324098553,
+      "amount": 100,
+      "crypto": "BTC",
+      "status": "approved"
+    },
+    "D1767785083891": {
+      "userId": 6497860077,
+      "amount": 100,
+      "crypto": "BTC",
+      "status": "approved"
+    },
+    "D1767785669114": {
+      "userId": 6501532900,
+      "amount": 100,
+      "crypto": "ETH",
+      "status": "approved"
+    },
+    "D1767959919668": {
+      "userId": 6497860077,
+      "amount": 100,
+      "crypto": "BNB",
+      "status": "approved"
+    },
+    "D1767962689279": {
+      "userId": 7772533119,
+      "amount": 100,
+      "crypto": "BTC",
+      "status": "approved"
+    },
+    "D1767977992492": {
+      "userId": 7772533119,
+      "amount": 27,
+      "crypto": "BTC",
+      "status": "approved"
+    },
+    "D1767978151664": {
+      "userId": 7772533119,
+      "amount": 50,
+      "crypto": "USDT",
+      "status": "approved"
     }
   }
 }
